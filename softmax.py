@@ -54,14 +54,14 @@ if __name__ == '__main__':
         # 入力データXと正解ラベルを取り出す
         for x_i, t_i in zip(X, t):
             # softmax関数を計算
-            y_i = softmax(np.inner(w, x_i))
+            y_i = softmax(np.dot(x_i, w.T))
             # one-hotを適用
             T = onehot(t_i)
             # 勾配降下法
             w -= rho * np.expand_dims(y_i - T, 1) * x_i
 
         # 正解クラスと予測クラスとの比較
-        y = softmax(np.inner(X, w))
+        y = softmax(np.dot(X, w.T))
         predict_class = np.argmax(y, axis=1)
         num_correct = np.sum(t == predict_class)
         correct_percent = num_correct / float(num_examples) * 100
