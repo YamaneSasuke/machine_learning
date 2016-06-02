@@ -7,6 +7,7 @@ Created on Fri May 27 13:15:20 2016
 
 import numpy as np
 from sklearn import datasets
+import matplotlib.pyplot as plt
 
 
 def softmax(z):
@@ -40,12 +41,13 @@ if __name__ == '__main__':
     # 超パラメータ
     max_iteration = 1000
     batch_size = 100
-    rho = 0.5  # 学習率
+    rho = 0.05  # 学習率
 
     # num_features次元の重みをnum_classesクラス分用意する
     w = np.random.randn(num_classes, num_features)
 
     num_batches = num_examples / batch_size
+    corrects = []
     for epoch in range(max_iteration):
         # 入力データXと正解ラベルを取り出す
         permu = np.random.permutation(num_examples)
@@ -62,6 +64,9 @@ if __name__ == '__main__':
             w -= rho * np.dot((y_batch - T).T, x_batch)
 
         correct_rate = score(X, t, w)
+        corrects.append(correct_rate)
+        plt.plot(corrects)
+        plt.show()
         print "epoch:", epoch, "correct:", correct_rate
 
         if correct_rate == 1.0:
