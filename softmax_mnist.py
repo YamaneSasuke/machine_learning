@@ -50,9 +50,12 @@ if __name__ == '__main__':
     x_train, t_train, x_test, t_test = load_mnist.load_mnist()
 
     X_raw = x_train / 255.0
+    X_test_raw = x_test / 255.0
     t = t_train
     num_examples = len(X_raw)
+    num_examples_test = len(X_test_raw)
     X = np.hstack((X_raw, np.ones((num_examples, 1))))
+    X_test = np.hstack((X_test_raw, np.ones((num_examples_test, 1))))
     num_classes = len(np.unique(t))
     num_features = X.shape[1]
 
@@ -65,7 +68,7 @@ if __name__ == '__main__':
     w = np.random.randn(num_classes, num_features)
 
     num_batches = num_examples / batch_size
-    corrects = []
+    corrects = []  # グラフ描画用の配列
     for epoch in range(max_iteration):
         # 入力データXと正解ラベルを取り出す
         permu = np.random.permutation(num_examples)
@@ -81,7 +84,7 @@ if __name__ == '__main__':
             # 勾配降下法
             w -= rho * np.dot((y_batch - T).T, x_batch)
 
-        correct_rate = score(X, t, w)
+        correct_rate = score(X_test, t_test, w)
         corrects.append(correct_rate)
         plt.plot(corrects)
         plt.show()
