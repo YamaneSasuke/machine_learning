@@ -16,23 +16,6 @@ def softmax_logsumexp(z):
     return np.exp(z - scipy.misc.logsumexp(z, axis=1, keepdims=True))
 
 
-def softmax(z):
-    exp_z = np.exp(z)
-    assert(not np.any(np.isinf(exp_z)))
-    return exp_z / exp_z.sum(1, keepdims=True)
-
-
-def check_softmax(z):
-    assert(np.allclose(softmax(z), softmax_logsumexp(z)))
-
-
-def test_softmax():
-    check_softmax([[1, 2, 3]])
-    check_softmax([[1, 2, 3],
-                   [4, 5, 6]])
-test_softmax()
-
-
 def onehot(k, num_classes=10):
     t_onehot = np.zeros((len(k), num_classes))
     for i, k_i in enumerate(k):
@@ -93,6 +76,7 @@ if __name__ == '__main__':
             # 勾配降下法
             w -= rho * np.dot((y_batch - T).T, x_batch)
 
+        # 訓練データの結果を表示
         print "epoch:", epoch
         correct_rate = score(X_valid, t_valid, w)
         if correct_rate > correct_rate_best:
@@ -106,5 +90,6 @@ if __name__ == '__main__':
         plt.plot(corrects)
         plt.show()
 
+    # テストデータの結果を表示
     test_correct_rate = score(X_test, t_test, w_best)
     print "test_correct_rate", test_correct_rate
