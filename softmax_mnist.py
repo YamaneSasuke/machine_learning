@@ -7,6 +7,7 @@ Created on Wed Jun 01 12:40:19 2016
 
 import load_mnist
 import numpy as np
+from sklearn.cross_validation import train_test_split
 import scipy
 import matplotlib.pyplot as plt
 
@@ -48,33 +49,41 @@ def score(X, t, w):
 
 if __name__ == '__main__':
     x_train, t_train, x_test, t_test = load_mnist.load_mnist()
-
+    # 訓練用データ
     X_raw = x_train / 255.0
+    num_train = len(X_raw)
+    x = np.hstack((X_raw, np.ones((num_train, 1))))
+    X_train, X_valid, T_train, t_valid = train_test_split(x,
+                                                          t_train,
+                                                          test_size=0.1,
+                                                          random_state=10)
+    num_train = len(X_train)
+    num_classes = len(np.unique(T_train))
+    num_features = X_train.shape[1]
+    # テスト用データ
     X_test_raw = x_test / 255.0
-    t = t_train
-    num_examples = len(X_raw)
-    num_examples_test = len(X_test_raw)
-    X = np.hstack((X_raw, np.ones((num_examples, 1))))
-    X_test = np.hstack((X_test_raw, np.ones((num_examples_test, 1))))
-    num_classes = len(np.unique(t))
-    num_features = X.shape[1]
+    num_test = len(X_test_raw)
+    X_test = np.hstack((X_test_raw, np.ones((num_test, 1))))
 
     # 超パラメータ
-    max_iteration = 100
+    max_iteration = 500
     batch_size = 100
-    rho = 0.5  # 学習率
+    rho = 0.0001  # 学習率
+    w_scale = 0.01
 
     # num_features次元の重みをnum_classesクラス分用意する
-    w = np.random.randn(num_classes, num_features)
+    w = w_scale * np.random.randn(num_classes, num_features)
+    w[:, -1] = 0  # バイアスパラメータの初期値
 
-    num_batches = num_examples / batch_size
+    num_batches = num_train / batch_size
     corrects = []  # グラフ描画用の配列
+    correct_rate_best = 0
     for epoch in range(max_iteration):
         # 入力データXと正解ラベルを取り出す
-        permu = np.random.permutation(num_examples)
+        permu = np.random.permutation(num_train)
         for indexes in np.array_split(permu, num_batches):
-            x_batch = X[indexes]
-            t_batch = t[indexes]
+            x_batch = X_train[indexes]
+            t_batch = T_train[indexes]
             # softmax関数を計算
             assert(not np.any(np.isnan(w)))
             y_batch = softmax_logsumexp(np.dot(x_batch, w.T))
@@ -84,11 +93,18 @@ if __name__ == '__main__':
             # 勾配降下法
             w -= rho * np.dot((y_batch - T).T, x_batch)
 
-        correct_rate = score(X_test, t_test, w)
+        print "epoch:", epoch
+        correct_rate = score(X_valid, t_valid, w)
+        if correct_rate > correct_rate_best:
+            w_best = w
+            correct_rate_best = correct_rate
+            epoch_best = epoch
         corrects.append(correct_rate)
+        print "correct:", correct_rate
+        print "best_correct", correct_rate_best, "best_epoch", epoch_best
+        print "best_w", w_best
         plt.plot(corrects)
         plt.show()
-        print "epoch:", epoch, "correct:", correct_rate
 
-        if correct_rate == 1.0:
-            break
+    test_correct_rate = score(X_test, t_test, w_best)
+    print "test_correct_rate", test_correct_rate
