@@ -51,7 +51,7 @@ if __name__ == '__main__':
     # 超パラメータ
     max_iteration = 500
     batch_size = 100
-    rho = 0.0001  # 学習率
+    rho = 0.01  # 学習率
     w_scale = 0.01
 
     # num_features次元の重みをnum_classesクラス分用意する
@@ -67,6 +67,7 @@ if __name__ == '__main__':
         for indexes in np.array_split(permu, num_batches):
             x_batch = X_train[indexes]
             t_batch = T_train[indexes]
+            this_batch_size = len(indexes)
             # softmax関数を計算
             assert(not np.any(np.isnan(w)))
             y_batch = softmax_logsumexp(np.dot(x_batch, w.T))
@@ -74,7 +75,8 @@ if __name__ == '__main__':
             # one-hotを適用
             T = onehot(t_batch)
             # 勾配降下法
-            w -= rho * np.dot((y_batch - T).T, x_batch)
+            w_grad = np.dot((y_batch - T).T, x_batch) / this_batch_size
+            w -= rho * w_grad
 
         # 訓練データの結果を表示
         print "epoch:", epoch
