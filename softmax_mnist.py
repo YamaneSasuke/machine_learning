@@ -36,7 +36,7 @@ if __name__ == '__main__':
     X_raw = x_train / 255.0
     num_train = len(X_raw)
     x = np.hstack((X_raw, np.ones((num_train, 1))))
-    X_train, X_valid, T_train, t_valid = train_test_split(x,
+    X_train, X_valid, T_train, T_valid = train_test_split(x,
                                                           t_train,
                                                           test_size=0.1,
                                                           random_state=10)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     # 超パラメータ
     max_iteration = 500
     batch_size = 100
-    rho = 0.01  # 学習率
+    rho = 0.008  # 学習率
     w_scale = 0.01
 
     # num_features次元の重みをnum_classesクラス分用意する
@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
         # 訓練データの結果を表示
         print "epoch:", epoch
-        correct_rate = score(X_valid, t_valid, w)
+        correct_rate = score(X_valid, T_valid, w)
         if correct_rate > correct_rate_best:
             w_best = w
             correct_rate_best = correct_rate
