@@ -17,6 +17,7 @@ def softmax_logsumexp(z):
 
 
 def onehot(k, num_classes=10):
+    assert(k.dtype == np.int32)
     t_onehot = np.zeros((len(k), num_classes))
     for i, k_i in enumerate(k):
         t_onehot[i][k_i] = 1
@@ -24,6 +25,7 @@ def onehot(k, num_classes=10):
 
 
 def score(X, t, w1, w2):
+    assert(t.dtype == np.int32)
     # 入力変数の線形和
     a_z = np.dot(X, w1.T)
 
@@ -40,7 +42,7 @@ def score(X, t, w1, w2):
     y = softmax_logsumexp(a_y)
 
     # 交差エントロピー損失　PRML式(4.108)
-    loss = -np.log(y[range(len(X)), t.astype(np.int)]).mean()
+    loss = -np.log(y[range(len(X)), t]).mean()
 
     predict_class = np.argmax(y, axis=1)
     return np.mean(t == predict_class), loss
@@ -52,6 +54,8 @@ if __name__ == '__main__':
     X_raw = x_train / 255.0
     num_train = len(X_raw)
     x = np.hstack((X_raw, np.ones((num_train, 1))))
+    t_train = t_train.astype(np.int32)
+    t_test = t_test.astype(np.int32)
     X_train, X_valid, T_train, T_valid = train_test_split(x,
                                                           t_train,
                                                           test_size=0.1,
