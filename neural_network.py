@@ -39,8 +39,11 @@ def score(X, t, w1, w2):
     # 出力ユニットの出力
     y = softmax_logsumexp(a_y)
 
+    # 交差エントロピー損失　PRML式(4.108)
+    loss = -np.log(y[range(len(X)), t.astype(np.int)]).mean()
+
     predict_class = np.argmax(y, axis=1)
-    return np.mean(t == predict_class)
+    return np.mean(t == predict_class), loss
 
 
 if __name__ == '__main__':
@@ -54,6 +57,7 @@ if __name__ == '__main__':
                                                           test_size=0.1,
                                                           random_state=10)
     num_train = len(X_train)
+    num_valid = len(X_valid)
     num_classes = len(np.unique(T_train))
     num_features = X_train.shape[1]
     # テスト用データ
@@ -78,6 +82,8 @@ if __name__ == '__main__':
     num_batches = num_train / batch_size
     corrects_train = []  # グラフ描画用の配列
     corrects_valid = []  # グラフ描画用の配列
+    loss_trains = []
+    loss_valids = []
     correct_rate_best = 0
     for epoch in range(max_iteration):
         # 入力データXと正解ラベルを取り出す
@@ -118,10 +124,8 @@ if __name__ == '__main__':
             w1 -= rho * w1_grad[:-1, :]
             w2 -= rho * w2_grad
 
-        # 訓練データの結果を表示
-        print "epoch:", epoch
-        correct_rate_train = score(X_train, T_train, w1, w2)
-        correct_rate_valid = score(X_valid, T_valid, w1, w2)
+        correct_rate_train, loss_train = score(X_train, T_train, w1, w2)
+        correct_rate_valid, loss_valid = score(X_valid, T_valid, w1, w2)
         if correct_rate_valid > correct_rate_best:
             w1_best = w1
             w2_best = w2
@@ -129,13 +133,28 @@ if __name__ == '__main__':
             epoch_best = epoch
         corrects_train.append(correct_rate_train)
         corrects_valid.append(correct_rate_valid)
-        print "best_w1", w1_best, "best_w2", w2_best
+        loss_trains.append(loss_train)
+        loss_valids.append(loss_valid)
+
+        # 正解率、損失を表示
+        print "epoch:", epoch
         print "[train] correct:", correct_rate_train
         print "[valid] correct:", correct_rate_valid
+        print "[train] loss:", loss_train
+        print "[valid] loss:", loss_valid
         print "best_correct", correct_rate_best, "best_epoch", epoch_best
+
         plt.plot(corrects_train)
         plt.plot(corrects_valid)
+        plt.title("correct")
         plt.legend(["train", "valid"], loc="lower right")
+        plt.grid()
+        plt.show()
+
+        plt.plot(loss_trains, label="train")
+        plt.plot(loss_valids, label="valid")
+        plt.title("loss")
+        plt.legend(loc="upper right")
         plt.grid()
         plt.show()
 
