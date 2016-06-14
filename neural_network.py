@@ -159,5 +159,6 @@ if __name__ == '__main__':
         plt.show()
 
     # テストデータの結果を表示
-    test_correct_rate = score(X_test, t_test, w1_best, w2_best)
-    print "test_correct_rate", test_correct_rate
+    test_correct_rate, test_loss = score(X_test, t_test, w1_best, w2_best)
+    print "[test] correct", test_correct_rate
+    print "[test] loss", test_loss
