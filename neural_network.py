@@ -76,7 +76,8 @@ if __name__ == '__main__':
     w2[:, -1] = 0  # バイアスパラメータの初期値
 
     num_batches = num_train / batch_size
-    corrects = []  # グラフ描画用の配列
+    corrects_train = []  # グラフ描画用の配列
+    corrects_valid = []  # グラフ描画用の配列
     correct_rate_best = 0
     for epoch in range(max_iteration):
         # 入力データXと正解ラベルを取り出す
@@ -119,17 +120,23 @@ if __name__ == '__main__':
 
         # 訓練データの結果を表示
         print "epoch:", epoch
-        correct_rate = score(X_valid, T_valid, w1, w2)
-        if correct_rate > correct_rate_best:
+        correct_rate_train = score(X_train, T_train, w1, w2)
+        correct_rate_valid = score(X_valid, T_valid, w1, w2)
+        if correct_rate_valid > correct_rate_best:
             w1_best = w1
             w2_best = w2
-            correct_rate_best = correct_rate
+            correct_rate_best = correct_rate_valid
             epoch_best = epoch
-        corrects.append(correct_rate)
+        corrects_train.append(correct_rate_train)
+        corrects_valid.append(correct_rate_valid)
         print "best_w1", w1_best, "best_w2", w2_best
-        print "correct:", correct_rate
+        print "[train] correct:", correct_rate_train
+        print "[valid] correct:", correct_rate_valid
         print "best_correct", correct_rate_best, "best_epoch", epoch_best
-        plt.plot(corrects)
+        plt.plot(corrects_train)
+        plt.plot(corrects_valid)
+        plt.legend(["train", "valid"], loc="lower right")
+        plt.grid()
         plt.show()
 
     # テストデータの結果を表示
