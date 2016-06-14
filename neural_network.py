@@ -83,6 +83,9 @@ if __name__ == '__main__':
     w2 = w_scale * np.random.randn(num_classes, dim_hidden + 1)
     w2[:, -1] = 0  # バイアスパラメータの初期値
 
+    v1 = np.zeros_like(w1)
+    v2 = np.zeros_like(w2)
+
     num_batches = num_train / batch_size
     corrects_train = []  # グラフ描画用の配列
     corrects_valid = []  # グラフ描画用の配列
@@ -118,15 +121,17 @@ if __name__ == '__main__':
 
             z_grad = np.dot((Y - T), w2)
 
-            d_z = z_grad * (np.ones((this_batch_size,
-                                     dim_hidden + 1)) - Z_new**2)
+            d_z = z_grad * (1 - Z_new**2)
+            d_z = d_z[:, :-1]
 
             # w1に関する勾配
             w1_grad = np.dot(d_z.T, x_batch) / this_batch_size
 
+            v1 = momentum * v1 + (1 - momentum) * w1_grad
+            v2 = momentum * v2 + (1 - momentum) * w2_grad
             # パラメータを更新
-            w1 -= rho * w1_grad[:-1, :]
-            w2 -= rho * w2_grad
+            w1 -= rho * v1
+            w2 -= rho * v2
 
         correct_rate_train, loss_train = score(X_train, T_train, w1, w2)
         correct_rate_valid, loss_valid = score(X_valid, T_valid, w1, w2)
