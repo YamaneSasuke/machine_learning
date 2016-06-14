@@ -62,9 +62,9 @@ if __name__ == '__main__':
     X_test = np.hstack((X_test_raw, np.ones((num_test, 1))))
 
     # 超パラメータ
-    max_iteration = 500
+    max_iteration = 300
     batch_size = 100
-    rho = 0.02
+    rho = 0.01
     # 学習率
     w_scale = 0.01
     dim_hidden = 100
