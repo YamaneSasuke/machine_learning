@@ -64,13 +64,15 @@ if __name__ == '__main__':
     # 超パラメータ
     max_iteration = 500
     batch_size = 100
-    rho = 0.01  # 学習率
+    rho = 0.02
+    # 学習率
     w_scale = 0.01
+    dim_hidden = 100
 
     # num_features次元の重みをnum_classesクラス分用意する
-    w1 = w_scale * np.random.randn(num_classes, num_features)
+    w1 = w_scale * np.random.randn(dim_hidden, num_features)
     w1[:, -1] = 0  # バイアスパラメータの初期値
-    w2 = w_scale * np.random.randn(num_classes, num_classes + 1)
+    w2 = w_scale * np.random.randn(num_classes, dim_hidden + 1)
     w2[:, -1] = 0  # バイアスパラメータの初期値
 
     num_batches = num_train / batch_size
@@ -106,7 +108,7 @@ if __name__ == '__main__':
             z_grad = np.dot((Y - T), w2)
 
             d_z = z_grad * (np.ones((this_batch_size,
-                                     num_classes + 1)) - Z_new**2)
+                                     dim_hidden + 1)) - Z_new**2)
 
             # w1に関する勾配
             w1_grad = np.dot(d_z.T, x_batch) / this_batch_size
@@ -124,9 +126,9 @@ if __name__ == '__main__':
             correct_rate_best = correct_rate
             epoch_best = epoch
         corrects.append(correct_rate)
+        print "best_w1", w1_best, "best_w2", w2_best
         print "correct:", correct_rate
         print "best_correct", correct_rate_best, "best_epoch", epoch_best
-        print "best_w1", w1_best, "best_w2", w2_best
         plt.plot(corrects)
         plt.show()
 
