@@ -76,6 +76,7 @@ if __name__ == '__main__':
     # 学習率
     w_scale = 0.01
     dim_hidden = 100
+    decay_rate = 0.0001
 
     # num_features次元の重みをnum_classesクラス分用意する
     w1 = w_scale * np.random.randn(dim_hidden, num_features)
@@ -118,6 +119,7 @@ if __name__ == '__main__':
 
             # w2に関する勾配
             w2_grad = np.dot((Y - T).T, Z_new) / this_batch_size
+            w2_grad += decay_rate * w2
 
             z_grad = np.dot((Y - T), w2)
 
@@ -126,6 +128,7 @@ if __name__ == '__main__':
 
             # w1に関する勾配
             w1_grad = np.dot(d_z.T, x_batch) / this_batch_size
+            w1_grad += decay_rate * w1
 
             v1 = momentum * v1 + (1 - momentum) * w1_grad
             v2 = momentum * v2 + (1 - momentum) * w2_grad
