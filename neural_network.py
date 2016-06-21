@@ -155,6 +155,10 @@ if __name__ == '__main__':
         print "[train] loss:", loss_train
         print "[valid] loss:", loss_valid
         print "best_correct", correct_rate_best, "best_epoch", epoch_best
+        print "|w1_grad|", np.linalg.norm(w1_grad, axis=1).mean()
+        print "|w2_grad|", np.linalg.norm(w2_grad, axis=1).mean()
+        print "|w1|", np.linalg.norm(w1, axis=1).mean()
+        print "|w2|", np.linalg.norm(w2, axis=1).mean()
 
         plt.plot(corrects_train)
         plt.plot(corrects_valid)
