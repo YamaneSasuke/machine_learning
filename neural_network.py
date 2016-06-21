@@ -161,11 +161,11 @@ if __name__ == '__main__':
         print "[valid] correct:", correct_rate_valid
         print "[train] loss:", loss_train
         print "[valid] loss:", loss_valid
-        print "best_correct", correct_rate_best, "best_epoch", epoch_best
-        print "|w1_grad|", np.linalg.norm(w1_grad, axis=1).mean()
-        print "|w2_grad|", np.linalg.norm(w2_grad, axis=1).mean()
-        print "|w1|", np.linalg.norm(w1, axis=1).mean()
-        print "|w2|", np.linalg.norm(w2, axis=1).mean()
+        print "best_correct:", correct_rate_best, "best_epoch", epoch_best
+        print "|w1_grad|:", np.linalg.norm(w1_grad, axis=1).mean()
+        print "|w2_grad|:", np.linalg.norm(w2_grad, axis=1).mean()
+        print "|w1|:", np.linalg.norm(w1, axis=1).mean()
+        print "|w2|:", np.linalg.norm(w2, axis=1).mean()
 
         plt.plot(corrects_train)
         plt.plot(corrects_valid)
@@ -183,5 +183,12 @@ if __name__ == '__main__':
 
     # テストデータの結果を表示
     test_correct_rate, test_loss = score(X_test, t_test, w1_best, w2_best)
-    print "[test] correct", test_correct_rate
-    print "[test] loss", test_loss
+    print "[test] correct:", test_correct_rate
+    print "[test] loss:", test_loss
+    print "max_iteration:", max_iteration
+    print "batch_size:", batch_size
+    print "rho:", rho
+    print "w_scale:", w_scale
+    print "dim_hidden:", dim_hidden
+    print "momentum:", momentum
+    print "decay_rate:", decay_rate
