@@ -10,6 +10,7 @@ import numpy as np
 from sklearn.cross_validation import train_test_split
 import scipy
 import matplotlib.pyplot as plt
+import time
 
 
 def softmax_logsumexp(z):
@@ -93,7 +94,9 @@ if __name__ == '__main__':
     loss_trains = []
     loss_valids = []
     correct_rate_best = 0
+    time_origin = time.time()
     for epoch in range(max_iteration):
+        time_begin = time.time()
         # 入力データXと正解ラベルを取り出す
         permu = np.random.permutation(num_train)
         for indexes in np.array_split(permu, num_batches):
@@ -135,6 +138,7 @@ if __name__ == '__main__':
             # パラメータを更新
             w1 -= rho * v1
             w2 -= rho * v2
+        time_end = time.time()
 
         correct_rate_train, loss_train = score(X_train, T_train, w1, w2)
         correct_rate_valid, loss_valid = score(X_valid, T_valid, w1, w2)
@@ -150,6 +154,7 @@ if __name__ == '__main__':
 
         # 正解率、損失を表示
         print "epoch:", epoch
+        print "time:", time_end - time_begin, "(", time_end - time_origin, ")"
         print "[train] correct:", correct_rate_train
         print "[valid] correct:", correct_rate_valid
         print "[train] loss:", loss_train
