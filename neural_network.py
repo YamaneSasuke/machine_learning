@@ -73,10 +73,10 @@ if __name__ == '__main__':
     # 超パラメータ
     max_iteration = 300
     batch_size = 100
-    rho = 0.01
-    # 学習率
+    rho = 0.1  # 学習率
     w_scale = 0.01
-    dim_hidden = 100
+    dim_hidden = 400
+    momentum = 0.9
     decay_rate = 0.0001
 
     # num_features次元の重みをnum_classesクラス分用意する
