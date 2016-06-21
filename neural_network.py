@@ -80,9 +80,11 @@ if __name__ == '__main__':
     decay_rate = 0.0001
 
     # num_features次元の重みをnum_classesクラス分用意する
-    w1 = w_scale * np.random.randn(dim_hidden, num_features)
+    w1_scale = np.sqrt(1.0 / (num_features + dim_hidden))
+    w1 = w1_scale * np.random.randn(dim_hidden, num_features)
     w1[:, -1] = 0  # バイアスパラメータの初期値
-    w2 = w_scale * np.random.randn(num_classes, dim_hidden + 1)
+    w2_scale = np.sqrt(1.0 / (dim_hidden + num_classes))
+    w2 = w2_scale * np.random.randn(num_classes, dim_hidden + 1)
     w2[:, -1] = 0  # バイアスパラメータの初期値
 
     v1 = np.zeros_like(w1)
