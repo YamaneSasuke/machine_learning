@@ -64,61 +64,68 @@ if __name__ == '__main__':
     accuracy_best = 0
 
     time_origin = time.time()
-    for epoch in range(max_iteration):
-        time_begin = time.time()
-        # 入力データXと正解ラベルを取り出す
-        permu = np.random.permutation(num_train)
-        for indexes in np.array_split(permu, num_batches):
-            x_batch = X_train[indexes]
-            t_batch = T_train[indexes]
-            this_batch_size = len(indexes)
-            # 勾配を初期化
-            optimizer.zero_grads()
-            # 順伝播を計算し、誤差と精度を取得
-            loss, accuracy = loss_and_accuracy(model, x_batch, t_batch)
-            # 逆伝搬を計算
-            loss.backward()
-            optimizer.weight_decay(0.001)  # L2正則化を実行
-            optimizer.update()
+    try:
+        for epoch in range(max_iteration):
+            time_begin = time.time()
+            # 入力データXと正解ラベルを取り出す
+            permu = np.random.permutation(num_train)
+            for indexes in np.array_split(permu, num_batches):
+                x_batch = X_train[indexes]
+                t_batch = T_train[indexes]
+                this_batch_size = len(indexes)
+                # 勾配を初期化
+                optimizer.zero_grads()
+                # 順伝播を計算し、誤差と精度を取得
+                loss, accuracy = loss_and_accuracy(model, x_batch, t_batch)
+                # 逆伝搬を計算
+                loss.backward()
+                optimizer.weight_decay(0.001)  # L2正則化を実行
+                optimizer.update()
 
-        time_end = time.time()
-        loss_train, accuracy_train = loss_and_accuracy(model, X_train, T_train)
-        loss_valid, accuracy_valid = loss_and_accuracy(model, X_valid, T_valid)
+            time_end = time.time()
+            epoch_time = time_end - time_begin
+            total_time = time_end - time_origin
+            loss_train, accuracy_train = loss_and_accuracy(model,
+                                                           X_train, T_train)
+            loss_valid, accuracy_valid = loss_and_accuracy(model,
+                                                           X_valid, T_valid)
 
-        if accuracy_valid.data > accuracy_best:
-            accuracy_best = accuracy_valid.data
-            epoch_best = epoch
-            model_best = copy.deepcopy(model)  # 最善のモデルを確保
+            if accuracy_valid.data > accuracy_best:
+                accuracy_best = accuracy_valid.data
+                epoch_best = epoch
+                model_best = copy.deepcopy(model)  # 最善のモデルを確保
 
-        accuracy_trains.append(accuracy_train.data)
-        accuracy_valids.append(accuracy_valid.data)
-        loss_trains.append(loss_train.data)
-        loss_valids.append(loss_valid.data)
+            accuracy_trains.append(accuracy_train.data)
+            accuracy_valids.append(accuracy_valid.data)
+            loss_trains.append(loss_train.data)
+            loss_valids.append(loss_valid.data)
 
-        # 正解率、損失を表示
-        print "epoch:", epoch
-        print "time:", time_end - time_begin, "(", time_end - time_origin, ")"
-        print "[train] accuracy:", accuracy_train.data
-        print "[valid] accuracy:", accuracy_valid.data
-        print "[train] loss:", loss_train.data
-        print "[valid] loss:", loss_valid.data
-        print "best_accuracy:", accuracy_best, "best_epoch", epoch_best
-        print "[model1] W:", np.linalg.norm(model.l1.W, axis=0).mean()
-        print "[model2] W:", np.linalg.norm(model.l2.W, axis=0).mean()
+            # 正解率、損失を表示
+            print "epoch:", epoch
+            print "time:", epoch_time, "(", total_time, ")"
+            print "[train] accuracy:", accuracy_train.data
+            print "[valid] accuracy:", accuracy_valid.data
+            print "[train] loss:", loss_train.data
+            print "[valid] loss:", loss_valid.data
+            print "best_accuracy:", accuracy_best, "best_epoch", epoch_best
+            print "[model1] W:", np.linalg.norm(model.l1.W, axis=0).mean()
+            print "[model2] W:", np.linalg.norm(model.l2.W, axis=0).mean()
 
-        plt.plot(accuracy_trains)
-        plt.plot(accuracy_valids)
-        plt.title("accuracy")
-        plt.legend(["train", "valid"], loc="lower right")
-        plt.grid()
-        plt.show()
+            plt.plot(accuracy_trains)
+            plt.plot(accuracy_valids)
+            plt.title("accuracy")
+            plt.legend(["train", "valid"], loc="lower right")
+            plt.grid()
+            plt.show()
 
-        plt.plot(loss_trains)
-        plt.plot(loss_valids)
-        plt.title("loss")
-        plt.legend(["train", "valid"], loc="upper right")
-        plt.grid()
-        plt.show()
+            plt.plot(loss_trains)
+            plt.plot(loss_valids)
+            plt.title("loss")
+            plt.legend(["train", "valid"], loc="upper right")
+            plt.grid()
+            plt.show()
+    except KeyboardInterrupt:
+        print "割り込み停止が実行されました"
 
     # テストデータの結果を表示
     loss_test, accuracy_test = loss_and_accuracy(model_best, x_test, t_test)
