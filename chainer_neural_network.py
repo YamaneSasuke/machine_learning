@@ -48,14 +48,13 @@ if __name__ == '__main__':
     max_iteration = 300  # 繰り返し回数
     batch_size = 100  # ミニバッチサイズ
     dim_hidden = 400  # 隠れ層の次元数
-
     # modelの定義
     model = FunctionSet(l1=F.Linear(num_features, dim_hidden),
                         l2=F.Linear(dim_hidden, dim_hidden),
                         l3=F.Linear(dim_hidden, num_classes))
 
     # Optimizerの設定
-    optimizer = optimizers.SGD()
+    optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)  # Momentum法
     optimizer.setup(model)
 
     num_batches = num_train / batch_size
