@@ -81,6 +81,7 @@ if __name__ == '__main__':
             loss, accuracy = forward(model, x_batch, t_batch)
             # 逆伝搬を計算
             loss.backward()
+            optimizer.weight_decay(0.001)  # L2正則化を実行
             optimizer.update()
 
         time_end = time.time()
