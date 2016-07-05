@@ -6,8 +6,10 @@ Created on Thu Jun 23 15:54:21 2016
 """
 
 import numpy as np
-from chainer import cuda, Function, FunctionSet, gradient_check, Variable, optimizers, utils
+from chainer import cuda, Variable, optimizers
+from chainer import Link, Chain, ChainList
 import chainer.functions as F
+import chainer.links as L
 import load_mnist
 from sklearn.cross_validation import train_test_split
 import matplotlib.pyplot as plt
@@ -22,7 +24,7 @@ def loss_and_accuracy(model, X, T, train=False):
     a_z = model.l1(x)
     z = F.tanh(a_z)
     a_y = model.l2(z)
-    return (F.softmax_cross_entropy(a_y, t, use_cudnn=False, normalize=False),
+    return (F.softmax_cross_entropy(a_y, t, normalize=False),
             F.accuracy(a_y, t))
 
 if __name__ == '__main__':
@@ -53,11 +55,21 @@ if __name__ == '__main__':
     max_iteration = 300  # 繰り返し回数
     batch_size = 100  # ミニバッチサイズ
     dim_hidden = 400  # 隠れ層の次元数
+
     # modelの定義
-    model = FunctionSet(l1=F.Linear(num_features, dim_hidden),
-                        l2=F.Linear(dim_hidden, num_classes)).to_gpu()
+    class Mychain(Chain):
+        def __init__(self):
+                super(Mychain, self).__init__(
+                    l1=L.Linear(num_features, dim_hidden).to_gpu(),
+                    l2=L.Linear(dim_hidden, num_classes).to_gpu(),
+                )
+
+        def __call__(self, x):
+            h = self.l1(x)
+            return self.l2(h)
 
     # Optimizerの設定
+    model = Mychain()
     optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)  # Momentum法
     optimizer.setup(model)
 
@@ -120,9 +132,9 @@ if __name__ == '__main__':
             print "[train] loss:", loss_train.data
             print "[valid] loss:", loss_valid.data
             print "best_accuracy:", accuracy_best, "best_epoch", epoch_best
-            print "|W1|:", np.linalg.norm(cuda.to_cpu(model.l1.W),
+            print "|W1|:", np.linalg.norm(cuda.to_cpu(model.l1.W.data),
                                           axis=0).mean()
-            print "|W2|:", np.linalg.norm(cuda.to_cpu(model.l2.W),
+            print "|W2|:", np.linalg.norm(cuda.to_cpu(model.l2.W.data),
                                           axis=0).mean()
 
             plt.plot(accuracy_trains)
