@@ -22,7 +22,8 @@ def loss_and_accuracy(model, X, T, train=False):
     a_z = model.l1(x)
     z = F.tanh(a_z)
     a_y = model.l2(z)
-    return F.softmax_cross_entropy(a_y, t), F.accuracy(a_y, t)
+    return (F.softmax_cross_entropy(a_y, t, use_cudnn=False, normalize=False),
+            F.accuracy(a_y, t))
 
 if __name__ == '__main__':
     x_train, t_train, x_test, t_test = load_mnist.load_mnist()
@@ -49,7 +50,7 @@ if __name__ == '__main__':
     dim_hidden = 400  # 隠れ層の次元数
     # modelの定義
     model = FunctionSet(l1=F.Linear(num_features, dim_hidden),
-                        l2=F.Linear(dim_hidden, num_classes))
+                        l2=F.Linear(dim_hidden, num_classes)).to_gpu()
 
     # Optimizerの設定
     optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)  # Momentum法
@@ -70,8 +71,10 @@ if __name__ == '__main__':
             # 入力データXと正解ラベルを取り出す
             permu = np.random.permutation(num_train)
             for indexes in np.array_split(permu, num_batches):
-                x_batch = X_train[indexes]
-                t_batch = T_train[indexes]
+                x = X_train[indexes]
+                t = T_train[indexes]
+                x_batch = cuda.to_gpu(x)
+                t_batch = cuda.to_gpu(t)
                 this_batch_size = len(indexes)
                 # 勾配を初期化
                 optimizer.zero_grads()
@@ -85,20 +88,28 @@ if __name__ == '__main__':
             time_end = time.time()
             epoch_time = time_end - time_begin
             total_time = time_end - time_origin
+            X_t = cuda.to_gpu(X_train)
+            T_t = cuda.to_gpu(T_train)
+            X_v = cuda.to_gpu(X_valid)
+            T_v = cuda.to_gpu(T_valid)
             loss_train, accuracy_train = loss_and_accuracy(model,
-                                                           X_train, T_train)
+                                                           X_t, T_t)
             loss_valid, accuracy_valid = loss_and_accuracy(model,
-                                                           X_valid, T_valid)
+                                                           X_v, T_v)
 
             if accuracy_valid.data > accuracy_best:
                 accuracy_best = accuracy_valid.data
                 epoch_best = epoch
                 model_best = copy.deepcopy(model)  # 最善のモデルを確保
 
-            accuracy_trains.append(accuracy_train.data)
-            accuracy_valids.append(accuracy_valid.data)
-            loss_trains.append(loss_train.data)
-            loss_valids.append(loss_valid.data)
+            numpy_accuracy_train = cuda.to_cpu(accuracy_train.data)
+            numpy_accuracy_valid = cuda.to_cpu(accuracy_valid.data)
+            numpy_loss_train = cuda.to_cpu(loss_train.data)
+            numpy_loss_valid = cuda.to_cpu(loss_train.data)
+            accuracy_trains.append(numpy_accuracy_train)
+            accuracy_valids.append(numpy_accuracy_valid)
+            loss_trains.append(numpy_loss_train)
+            loss_valids.append(numpy_loss_valid)
 
             # 正解率、損失を表示
             print "epoch:", epoch
@@ -108,8 +119,8 @@ if __name__ == '__main__':
             print "[train] loss:", loss_train.data
             print "[valid] loss:", loss_valid.data
             print "best_accuracy:", accuracy_best, "best_epoch", epoch_best
-            print "[model1] W:", np.linalg.norm(model.l1.W, axis=0).mean()
-            print "[model2] W:", np.linalg.norm(model.l2.W, axis=0).mean()
+#            print "[model1] W:", cp.linalg.norm(model.l1.W, axis=0).mean()
+#            print "[model2] W:", cp.linalg.norm(model.l2.W, axis=0).mean()
 
             plt.plot(accuracy_trains)
             plt.plot(accuracy_valids)
@@ -128,6 +139,8 @@ if __name__ == '__main__':
         print "割り込み停止が実行されました"
 
     # テストデータの結果を表示
+    x_test = cuda.to_gpu(x_test)
+    t_test = cuda.to_gpu(t_test)
     loss_test, accuracy_test = loss_and_accuracy(model_best, x_test, t_test)
     print "[test] accuracy:", accuracy_test.data
     print "[test] loss:", loss_test.data
