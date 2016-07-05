@@ -44,6 +44,11 @@ if __name__ == '__main__':
     num_classes = len(np.unique(T_train))
     num_features = X_train.shape[1]
 
+    X_train_gpu = cuda.to_gpu(X_train)
+    T_train_gpu = cuda.to_gpu(T_train)
+    X_valid_gpu = cuda.to_gpu(X_valid)
+    T_valid_gpu = cuda.to_gpu(T_valid)
+
     # 超パラメータ
     max_iteration = 300  # 繰り返し回数
     batch_size = 100  # ミニバッチサイズ
@@ -71,10 +76,8 @@ if __name__ == '__main__':
             # 入力データXと正解ラベルを取り出す
             permu = np.random.permutation(num_train)
             for indexes in np.array_split(permu, num_batches):
-                x = X_train[indexes]
-                t = T_train[indexes]
-                x_batch = cuda.to_gpu(x)
-                t_batch = cuda.to_gpu(t)
+                x_batch = cuda.to_gpu(X_train[indexes])
+                t_batch = cuda.to_gpu(T_train[indexes])
                 this_batch_size = len(indexes)
                 # 勾配を初期化
                 optimizer.zero_grads()
@@ -88,14 +91,12 @@ if __name__ == '__main__':
             time_end = time.time()
             epoch_time = time_end - time_begin
             total_time = time_end - time_origin
-            X_t = cuda.to_gpu(X_train)
-            T_t = cuda.to_gpu(T_train)
-            X_v = cuda.to_gpu(X_valid)
-            T_v = cuda.to_gpu(T_valid)
             loss_train, accuracy_train = loss_and_accuracy(model,
-                                                           X_t, T_t)
+                                                           X_train_gpu,
+                                                           T_train_gpu)
             loss_valid, accuracy_valid = loss_and_accuracy(model,
-                                                           X_v, T_v)
+                                                           X_valid_gpu,
+                                                           T_valid_gpu)
 
             if accuracy_valid.data > accuracy_best:
                 accuracy_best = accuracy_valid.data
@@ -119,8 +120,10 @@ if __name__ == '__main__':
             print "[train] loss:", loss_train.data
             print "[valid] loss:", loss_valid.data
             print "best_accuracy:", accuracy_best, "best_epoch", epoch_best
-#            print "[model1] W:", cp.linalg.norm(model.l1.W, axis=0).mean()
-#            print "[model2] W:", cp.linalg.norm(model.l2.W, axis=0).mean()
+            print "|W1|:", np.linalg.norm(cuda.to_cpu(model.l1.W),
+                                          axis=0).mean()
+            print "|W2|:", np.linalg.norm(cuda.to_cpu(model.l2.W),
+                                          axis=0).mean()
 
             plt.plot(accuracy_trains)
             plt.plot(accuracy_valids)
