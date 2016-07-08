@@ -6,8 +6,7 @@ Created on Thu Jun 23 15:54:21 2016
 """
 
 import numpy as np
-from chainer import cuda, Variable, optimizers
-from chainer import Link, Chain, ChainList
+from chainer import cuda, Variable, optimizers, Chain
 import chainer.functions as F
 import chainer.links as L
 import load_mnist
@@ -17,15 +16,21 @@ import time
 import copy
 
 
-# 順伝播の計算
-def loss_and_accuracy(model, X, T, train=False):
-    x = Variable(X)
-    t = Variable(T)
-    a_z = model.l1(x)
-    z = F.tanh(a_z)
-    a_y = model.l2(z)
-    return (F.softmax_cross_entropy(a_y, t, normalize=False),
-            F.accuracy(a_y, t))
+# ニューラルネットワークの定義
+class MLP(Chain):
+    def __init__(self, num_features, dim_hidden, num_classes):
+        super(MLP, self).__init__(
+            l1=L.Linear(num_features, dim_hidden),
+            l2=L.Linear(dim_hidden, num_classes),
+        )
+
+    def loss_and_accuracy(self, X, T, train=False):
+        x = Variable(X)
+        t = Variable(T)
+        a_z = self.l1(x)
+        z = F.tanh(a_z)
+        a_y = self.l2(z)
+        return F.softmax_cross_entropy(a_y, t), F.accuracy(a_y, t)
 
 if __name__ == '__main__':
     x_train, t_train, x_test, t_test = load_mnist.load_mnist()
@@ -57,19 +62,9 @@ if __name__ == '__main__':
     dim_hidden = 400  # 隠れ層の次元数
 
     # modelの定義
-    class Mychain(Chain):
-        def __init__(self):
-                super(Mychain, self).__init__(
-                    l1=L.Linear(num_features, dim_hidden).to_gpu(),
-                    l2=L.Linear(dim_hidden, num_classes).to_gpu(),
-                )
-
-        def __call__(self, x):
-            h = self.l1(x)
-            return self.l2(h)
+    model = MLP(num_features, dim_hidden, num_classes).to_gpu()
 
     # Optimizerの設定
-    model = Mychain()
     optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)  # Momentum法
     optimizer.setup(model)
 
@@ -94,7 +89,7 @@ if __name__ == '__main__':
                 # 勾配を初期化
                 optimizer.zero_grads()
                 # 順伝播を計算し、誤差と精度を取得
-                loss, accuracy = loss_and_accuracy(model, x_batch, t_batch)
+                loss, accuracy = model.loss_and_accuracy(x_batch, t_batch)
                 # 逆伝搬を計算
                 loss.backward()
                 optimizer.weight_decay(0.001)  # L2正則化を実行
@@ -103,12 +98,10 @@ if __name__ == '__main__':
             time_end = time.time()
             epoch_time = time_end - time_begin
             total_time = time_end - time_origin
-            loss_train, accuracy_train = loss_and_accuracy(model,
-                                                           X_train_gpu,
-                                                           T_train_gpu)
-            loss_valid, accuracy_valid = loss_and_accuracy(model,
-                                                           X_valid_gpu,
-                                                           T_valid_gpu)
+            loss_train, accuracy_train = model.loss_and_accuracy(X_train_gpu,
+                                                                 T_train_gpu)
+            loss_valid, accuracy_valid = model.loss_and_accuracy(X_valid_gpu,
+                                                                 T_valid_gpu)
 
             if accuracy_valid.data > accuracy_best:
                 accuracy_best = accuracy_valid.data
@@ -118,7 +111,7 @@ if __name__ == '__main__':
             numpy_accuracy_train = cuda.to_cpu(accuracy_train.data)
             numpy_accuracy_valid = cuda.to_cpu(accuracy_valid.data)
             numpy_loss_train = cuda.to_cpu(loss_train.data)
-            numpy_loss_valid = cuda.to_cpu(loss_train.data)
+            numpy_loss_valid = cuda.to_cpu(loss_valid.data)
             accuracy_trains.append(numpy_accuracy_train)
             accuracy_valids.append(numpy_accuracy_valid)
             loss_trains.append(numpy_loss_train)
@@ -156,7 +149,7 @@ if __name__ == '__main__':
     # テストデータの結果を表示
     x_test = cuda.to_gpu(x_test)
     t_test = cuda.to_gpu(t_test)
-    loss_test, accuracy_test = loss_and_accuracy(model_best, x_test, t_test)
+    loss_test, accuracy_test = model_best.loss_and_accuracy(x_test, t_test)
     print "[test] accuracy:", accuracy_test.data
     print "[test] loss:", loss_test.data
     print "max_iteration:", max_iteration
