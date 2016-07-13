@@ -24,7 +24,7 @@ class MLP(Chain):
             l2=L.Linear(dim_hidden, num_classes),
         )
 
-    def loss_and_accuracy(self, X, T, train=False):
+    def loss_and_accuracy(self, X, T):
         x = Variable(X)
         t = Variable(T)
         a_z = self.l1(x)
