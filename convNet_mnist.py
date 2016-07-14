@@ -29,7 +29,7 @@ class MLP(Chain):
         )
 
     def loss_and_accuracy(self, X, T):
-        x = Variable(X)
+        x = Variable(X.reshape(-1, 1, 28, 28))
         t = Variable(T)
         a = self.conv1(x)
         a_z = F.tanh(a)
