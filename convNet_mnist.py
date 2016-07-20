@@ -84,7 +84,7 @@ if __name__ == '__main__':
     T_valid_gpu = cuda.to_gpu(T_valid)
 
     # 超パラメータ
-    max_iteration = 300  # 繰り返し回数
+    max_iteration = 100  # 繰り返し回数
     batch_size = 100  # ミニバッチサイズ
     dim_hidden = 400  # 隠れ層の次元数
     learning_rate = 0.01  # 学習率
