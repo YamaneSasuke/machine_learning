@@ -19,9 +19,9 @@ import copy
 
 
 # ニューラルネットワークの定義
-class MLP(Chain):
-    def __init__(self, num_features, dim_hidden, num_classes):
-        super(MLP, self).__init__(
+class Convnet(Chain):
+    def __init__(self):
+        super(Convnet, self).__init__(
             conv1=L.Convolution2D(1, 20, 5),
             conv2=L.Convolution2D(20, 50, 5),
             l1=L.Linear(800, 500),
@@ -31,29 +31,29 @@ class MLP(Chain):
     def loss_and_accuracy(self, X, T):
         x = Variable(X.reshape(-1, 1, 28, 28))
         t = Variable(T)
-        a = self.conv1(x)
-        a_z = F.tanh(a)
-        z = F.max_pooling_2d(a_z, 2)
-        a = self.conv2(z)
-        a_z = F.tanh(a)
-        z = F.max_pooling_2d(a_z, 2)
-        a_y = self.l1(z)
-        a_y = self.l2(a_y)
-        return F.softmax_cross_entropy(a_y, t), F.accuracy(a_y, t)
+        h = self.conv1(x)
+        h = F.tanh(h)
+        h = F.max_pooling_2d(h, 2)
+        h = self.conv2(h)
+        h = F.tanh(h)
+        h = F.max_pooling_2d(h, 2)
+        h = self.l1(h)
+        h = self.l2(h)
+        return F.softmax_cross_entropy(h, t), F.accuracy(h, t)
 
 
-def loss_ave_and_accuracy_ave(model, X, T, num_data, num_batches):
+def loss_ave_and_accuracy_ave(model, X, T, num_batches):
     accuracies = []
     losses = []
-    total_data = np.arange(num_data)
+    total_data = np.arange(len(X))
     for indexes in np.array_split(total_data, num_batches):
         X_batch = cuda.to_gpu(X[indexes])
         T_batch = cuda.to_gpu(T[indexes])
         loss, accuracy = model.loss_and_accuracy(X_batch, T_batch)
-        numpy_accuracy = cuda.to_cpu(accuracy.data)
-        numpy_loss = cuda.to_cpu(loss.data)
-        accuracies.append(numpy_accuracy)
-        losses.append(numpy_loss)
+        accuracy_cpu = cuda.to_cpu(accuracy.data)
+        loss_cpu = cuda.to_cpu(loss.data)
+        accuracies.append(accuracy_cpu)
+        losses.append(loss_cpu)
     return np.mean(accuracies), np.mean(losses)
 
 
@@ -75,8 +75,8 @@ if __name__ == '__main__':
     num_train = len(X_train)
     num_valid = len(X_valid)
     num_test = len(X_test)
-    num_classes = len(np.unique(T_train))  # クラス数を格納
-    num_features = X_train.shape[1]  # 特徴数を格納
+    num_classes = len(np.unique(T_train))  # クラス数
+    dim_features = X_train.shape[1]  # 入力の次元数
 
     X_train_gpu = cuda.to_gpu(X_train)
     T_train_gpu = cuda.to_gpu(T_train)
@@ -87,12 +87,13 @@ if __name__ == '__main__':
     max_iteration = 300  # 繰り返し回数
     batch_size = 100  # ミニバッチサイズ
     dim_hidden = 400  # 隠れ層の次元数
+    learning_rate = 0.01  # 学習率
+    decay_rate = 0.001  # L2正則化
 
-    # modelの定義
-    model = MLP(num_features, dim_hidden, num_classes).to_gpu()
+    model = Convnet().to_gpu()
 
     # Optimizerの設定
-    optimizer = optimizers.MomentumSGD(lr=0.01, momentum=0.9)  # Momentum法
+    optimizer = optimizers.MomentumSGD(lr=learning_rate, momentum=0.9)
     optimizer.setup(model)
 
     num_batches = num_train / batch_size
@@ -127,20 +128,21 @@ if __name__ == '__main__':
             total_time = time_end - time_origin
 
             # trainデータで損失と精度を計算
-            accuracy_trains, loss_trains = loss_ave_and_accuracy_ave(
-                    model, X_train, T_train, num_train, num_batches)
-            accuracy_trains_history.append(accuracy_trains)
-            loss_trains_history.append(loss_trains)
+            accuracy_train, loss_train = loss_ave_and_accuracy_ave(
+                    model, X_train, T_train, num_batches)
+            accuracy_trains_history.append(accuracy_train)
+            loss_trains_history.append(loss_train)
             # validデータで損失と精度を計算
-            accuracy_valids, loss_valids = loss_ave_and_accuracy_ave(
-                    model, X_valid, T_valid, num_valid, num_batches)
-            accuracy_valids_history.append(accuracy_valids)
-            loss_valids_history.append(loss_valids)
+            accuracy_valid, loss_valid = loss_ave_and_accuracy_ave(
+                    model, X_valid, T_valid, num_batches)
+            accuracy_valids_history.append(accuracy_valid)
+            loss_valids_history.append(loss_valid)
 
             if accuracy_valids_history[epoch] > accuracy_best:
                 accuracy_best = accuracy_valids_history[epoch]
                 epoch_best = epoch
                 model_best = copy.deepcopy(model)  # 最善のモデルを確保
+
             # 正解率、損失を表示
             print "epoch:", epoch
             print "time:", epoch_time, "(", total_time, ")"
@@ -172,9 +174,10 @@ if __name__ == '__main__':
 
     # テストデータの結果を表示
     accuracy_test, loss_test = loss_ave_and_accuracy_ave(
-            model_best, X_test, T_test, num_test, num_batches)
+            model_best, X_test, T_test, num_batches)
     print "[test] accuracy:", accuracy_test
     print "[test] loss:", loss_test
     print "max_iteration:", max_iteration
     print "batch_size:", batch_size
-    print "dim_hidden:", dim_hidden
+    print "learning_rate", learning_rate
+    print "decay_rate", decay_rate
