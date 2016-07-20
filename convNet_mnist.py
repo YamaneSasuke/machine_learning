@@ -72,9 +72,9 @@ if __name__ == '__main__':
                                                           T_train,
                                                           test_size=0.1,
                                                           random_state=10)
-    num_train = len(X_train)  # データ数を格納
-    num_valid = len(X_valid)  # データ数を格納
-    num_test = len(X_test)  # データ数を格納
+    num_train = len(X_train)
+    num_valid = len(X_valid)
+    num_test = len(X_test)
     num_classes = len(np.unique(T_train))  # クラス数を格納
     num_features = X_train.shape[1]  # 特徴数を格納
 
