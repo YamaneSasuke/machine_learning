@@ -38,6 +38,7 @@ class Convnet(Chain):
         h = F.tanh(h)
         h = F.max_pooling_2d(h, 2)
         h = self.l1(h)
+        h = F.tanh(h)
         h = self.l2(h)
         return F.softmax_cross_entropy(h, t), F.accuracy(h, t)
 
