@@ -88,12 +88,14 @@ if __name__ == '__main__':
     batch_size = 100  # ミニバッチサイズ
     dim_hidden = 400  # 隠れ層の次元数
     learning_rate = 0.01  # 学習率
+    momentum_rate = 0.9  # Momentum
     decay_rate = 0.001  # L2正則化
 
     model = Convnet().to_gpu()
 
     # Optimizerの設定
-    optimizer = optimizers.MomentumSGD(lr=learning_rate, momentum=0.9)
+    optimizer = optimizers.MomentumSGD(lr=learning_rate,
+                                       momentum=momentum_rate)
     optimizer.setup(model)
 
     num_batches = num_train / batch_size
