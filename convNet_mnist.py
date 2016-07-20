@@ -73,10 +73,6 @@ if __name__ == '__main__':
                                                           test_size=0.1,
                                                           random_state=10)
     num_train = len(X_train)
-    num_valid = len(X_valid)
-    num_test = len(X_test)
-    num_classes = len(np.unique(T_train))  # クラス数
-    dim_features = X_train.shape[1]  # 入力の次元数
 
     X_train_gpu = cuda.to_gpu(X_train)
     T_train_gpu = cuda.to_gpu(T_train)
@@ -86,7 +82,6 @@ if __name__ == '__main__':
     # 超パラメータ
     max_iteration = 100  # 繰り返し回数
     batch_size = 100  # ミニバッチサイズ
-    dim_hidden = 400  # 隠れ層の次元数
     learning_rate = 0.01  # 学習率
     momentum_rate = 0.9  # Momentum
     decay_rate = 0.001  # L2正則化
@@ -183,3 +178,4 @@ if __name__ == '__main__':
     print "batch_size:", batch_size
     print "learning_rate", learning_rate
     print "decay_rate", decay_rate
+    print "momentum_rate", momentum_rate
