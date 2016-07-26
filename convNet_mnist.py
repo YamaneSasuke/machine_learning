@@ -22,35 +22,37 @@ import copy
 class Convnet(Chain):
     def __init__(self):
         super(Convnet, self).__init__(
-            conv1=L.Convolution2D(1, 20, 5),
-            conv2=L.Convolution2D(20, 50, 5),
-            l1=L.Linear(800, 500),
+            conv1=L.Convolution2D(1, 40, 5),
+            conv2=L.Convolution2D(40, 100, 5),
+            l1=L.Linear(1600, 500),
             l2=L.Linear(500, 10),
         )
 
-    def loss_and_accuracy(self, X, T):
+    def loss_and_accuracy(self, X, T, train):
         x = Variable(X.reshape(-1, 1, 28, 28))
         t = Variable(T)
         h = self.conv1(x)
-        h = F.tanh(h)
+        h = F.relu(h)
         h = F.max_pooling_2d(h, 2)
         h = self.conv2(h)
-        h = F.tanh(h)
+        h = F.relu(h)
         h = F.max_pooling_2d(h, 2)
+        h = F.dropout(h, train=train)
         h = self.l1(h)
-        h = F.tanh(h)
-        h = self.l2(h)
-        return F.softmax_cross_entropy(h, t), F.accuracy(h, t)
+        h = F.relu(h)
+        h = F.dropout(h, train=train)
+        y = self.l2(h)
+        return F.softmax_cross_entropy(y, t), F.accuracy(y, t)
 
 
-def loss_ave_and_accuracy_ave(model, X, T, num_batches):
+def loss_ave_and_accuracy_ave(model, X, T, num_batches, train):
     accuracies = []
     losses = []
     total_data = np.arange(len(X))
     for indexes in np.array_split(total_data, num_batches):
         X_batch = cuda.to_gpu(X[indexes])
         T_batch = cuda.to_gpu(T[indexes])
-        loss, accuracy = model.loss_and_accuracy(X_batch, T_batch)
+        loss, accuracy = model.loss_and_accuracy(X_batch, T_batch, train)
         accuracy_cpu = cuda.to_cpu(accuracy.data)
         loss_cpu = cuda.to_cpu(loss.data)
         accuracies.append(accuracy_cpu)
@@ -83,15 +85,14 @@ if __name__ == '__main__':
     # 超パラメータ
     max_iteration = 100  # 繰り返し回数
     batch_size = 100  # ミニバッチサイズ
-    learning_rate = 0.01  # 学習率
+    learning_rate = 0.00005  # 学習率
     momentum_rate = 0.9  # Momentum
     decay_rate = 0.001  # L2正則化
 
     model = Convnet().to_gpu()
 
     # Optimizerの設定
-    optimizer = optimizers.MomentumSGD(lr=learning_rate,
-                                       momentum=momentum_rate)
+    optimizer = optimizers.Adam(learning_rate)
     optimizer.setup(model)
 
     num_batches = num_train / batch_size
@@ -115,10 +116,12 @@ if __name__ == '__main__':
                 # 勾配を初期化
                 optimizer.zero_grads()
                 # 順伝播を計算し、誤差と精度を取得
-                loss, accuracy = model.loss_and_accuracy(x_batch, t_batch)
+                loss, accuracy = model.loss_and_accuracy(x_batch,
+                                                         t_batch,
+                                                         True)
                 # 逆伝搬を計算
                 loss.backward()
-                optimizer.weight_decay(decay_rate)  # L2正則化を実行
+#                optimizer.weight_decay(decay_rate)  # L2正則化を実行
                 optimizer.update()
 
             time_end = time.time()
@@ -127,12 +130,12 @@ if __name__ == '__main__':
 
             # trainデータで損失と精度を計算
             accuracy_train, loss_train = loss_ave_and_accuracy_ave(
-                    model, X_train, T_train, num_batches)
+                    model, X_train, T_train, num_batches, False)
             accuracy_trains_history.append(accuracy_train)
             loss_trains_history.append(loss_train)
             # validデータで損失と精度を計算
             accuracy_valid, loss_valid = loss_ave_and_accuracy_ave(
-                    model, X_valid, T_valid, num_batches)
+                    model, X_valid, T_valid, num_batches, False)
             accuracy_valids_history.append(accuracy_valid)
             loss_valids_history.append(loss_valid)
 
@@ -172,7 +175,7 @@ if __name__ == '__main__':
 
     # テストデータの結果を表示
     accuracy_test, loss_test = loss_ave_and_accuracy_ave(
-            model_best, X_test, T_test, num_batches)
+            model_best, X_test, T_test, num_batches, False)
     print "[test] accuracy:", accuracy_test
     print "[test] loss:", loss_test
     print "max_iteration:", max_iteration
