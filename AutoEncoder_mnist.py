@@ -84,12 +84,12 @@ if __name__ == '__main__':
                                                           T_train,
                                                           test_size=0.1,
                                                           random_state=10)
+    X_test = np.random.permutation(X_test)
+    T_test = np.random.permutation(T_test)
     X_train = X_train[0:1000]
     T_train = T_train[0:1000]
     X_valid = X_valid[0:100]
     T_valid = T_valid[0:100]
-    X_test = np.random.permutation(X_test)
-    T_test = np.random.permutation(T_test)
     X_test = X_test[0:100]
     T_test = T_test[0:100]
     X_train_gpu = cuda.to_gpu(X_train)
@@ -98,13 +98,8 @@ if __name__ == '__main__':
     T_valid_gpu = cuda.to_gpu(T_valid)
     X_test_gpu = cuda.to_gpu(X_test)
     T_test_gpu = cuda.to_gpu(T_test)
-    num_train = len(X_train)
-    num_features = X_train.shape[1]
 
-    X_train_gpu = cuda.to_gpu(X_train)
-    T_train_gpu = cuda.to_gpu(T_train)
-    X_valid_gpu = cuda.to_gpu(X_valid)
-    T_valid_gpu = cuda.to_gpu(T_valid)
+    num_features = X_train.shape[1]
 
     # 超パラメータ
     max_iteration = 100  # 繰り返し回数
@@ -118,7 +113,7 @@ if __name__ == '__main__':
     optimizer = optimizers.Adam(learning_rate)
     optimizer.setup(model)
 
-    num_batches = num_train / batch_size
+    num_batches = len(X_train) / batch_size
     loss_trains_history = []  # グラフ描画用の配列
     loss_valids_history = []  # グラフ描画用の配列
 
@@ -127,7 +122,7 @@ if __name__ == '__main__':
         for epoch in range(max_iteration):
             time_begin = time.time()
             # 入力データXと正解ラベルを取り出す
-            permu = np.random.permutation(num_train)
+            permu = np.random.permutation(len(X_train))
             for indexes in np.array_split(permu, num_batches):
                 x_batch = cuda.to_gpu(X_train[indexes])
                 t_batch = cuda.to_gpu(T_train[indexes])
@@ -144,10 +139,6 @@ if __name__ == '__main__':
             epoch_time = time_end - time_begin
             total_time = time_end - time_origin
 
-            # 訓練データでの結果を表示
-            print "epoch:", epoch
-            print "time:", epoch_time, "(", total_time, ")"
-
             loss_train, y_train = model.loss_and_output(X_train_gpu,
                                                         T_train_gpu)
             loss_valid, y_valid = model.loss_and_output(X_valid_gpu,
@@ -158,6 +149,9 @@ if __name__ == '__main__':
             y_valid = cuda.to_cpu(y_valid.data)
             loss_trains_history.append(loss_train)
             loss_valids_history.append(loss_valid)
+            # 訓練データでの結果を表示
+            print "epoch:", epoch
+            print "time:", epoch_time, "(", total_time, ")"
             print "[train] loss:", loss_trains_history[epoch]
             print "[valid] loss:", loss_valids_history[epoch]
             plt.plot(loss_trains_history)
