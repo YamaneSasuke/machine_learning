@@ -50,7 +50,7 @@ def draw_filters(W, cols=20, fig_size=(10, 10), filter_shape=(28, 28),
     high = (low + 3 * high) / 4
     all_filter_image = np.random.uniform(low=low, high=high,
                                          size=image_shape)
-    all_filter_image = np.full(image_shape, W.min())
+    all_filter_image = np.full(image_shape, W.min(), dtype=np.float32)
 
     for i, w in enumerate(W):
         start_row = (filter_height * (i / cols) +
@@ -88,6 +88,8 @@ if __name__ == '__main__':
     T_train = T_train[0:1000]
     X_valid = X_valid[0:100]
     T_valid = T_valid[0:100]
+    X_test = np.random.permutation(X_test)
+    T_test = np.random.permutation(T_test)
     X_test = X_test[0:100]
     T_test = T_test[0:100]
     X_train_gpu = cuda.to_gpu(X_train)
@@ -180,7 +182,4 @@ if __name__ == '__main__':
     print "max_iteration:", max_iteration
     print "batch_size:", batch_size
     print "learning_rate", learning_rate
-    print "画像の数字:", "[", T_test[i], "]"
-#    plt.matshow(y_test[i].reshape(28, 28), cmap=plt.cm.gray)
-#    plt.show()
     draw_filters(y_test, 10)
