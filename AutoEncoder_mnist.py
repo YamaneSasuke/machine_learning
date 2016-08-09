@@ -32,6 +32,18 @@ class Autoencoder(Chain):
         return F.mean_squared_error(y, t), y
 
 
+def plot_data(model, X, T, num_batches):
+    total_data = np.random.permutation(len(X))
+    for indexes in np.array_split(total_data, num_batches):
+        X_batch = cuda.to_gpu(X[indexes])
+        T_batch = cuda.to_gpu(T[indexes])
+        loss, y = model.loss_and_output(X_batch, T_batch)
+        y_cpu = cuda.to_cpu(y.data)
+        print T[indexes]
+        plt.matshow(y_cpu.reshape(28, 28), cmap=plt.cm.gray)
+        plt.show()
+
+
 if __name__ == '__main__':
     X_train, T_train, X_test, T_test = load_mnist.load_mnist()
     # データを0~1に変換
@@ -85,29 +97,15 @@ if __name__ == '__main__':
                 loss, y = model.loss_and_output(x_batch, t_batch)
                 # 逆伝搬を計算
                 loss.backward()
-
                 optimizer.update()
 
-                print epoch, "epoch"
-                y_cpu = cuda.to_cpu(y.data)
-                plt.matshow(y_cpu.reshape(28, 28), cmap=plt.cm.gray)
-                plt.show()
+        # 訓練データでの結果を表示
+        plot_data(model, X_train, T_train, num_batches)
 
     except KeyboardInterrupt:
         print "割り込み停止が実行されました"
 
+    # テストデータでの結果を表示
     num_batches = len(X_test) / batch_size
     permu = np.random.permutation(len(X_test))
-    for indexes in np.array_split(permu, num_batches):
-        x_batch = cuda.to_gpu(X_test[indexes])
-        t_batch = cuda.to_gpu(T_test[indexes])
-        this_batch_size = len(indexes)
-        # 勾配を初期化
-        optimizer.zero_grads()
-        # 順伝播を計算し、誤差と精度を取得
-        loss, y = model.loss_and_output(x_batch, t_batch)
-
-        print epoch, "epoch"
-        y_cpu = cuda.to_cpu(y.data)
-        plt.matshow(y_cpu.reshape(28, 28), cmap=plt.cm.gray)
-        plt.show()
+    plot_data(model, X_test, T_test, num_batches)
