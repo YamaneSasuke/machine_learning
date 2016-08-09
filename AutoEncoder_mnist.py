@@ -12,6 +12,7 @@ import chainer.links as L
 import load_mnist
 from sklearn.cross_validation import train_test_split
 import matplotlib.pyplot as plt
+import time
 
 
 # ニューラルネットワークの定義
@@ -38,10 +39,10 @@ def plot_data(model, X, T, num_batches):
         X_batch = cuda.to_gpu(X[indexes])
         T_batch = cuda.to_gpu(T[indexes])
         loss, y = model.loss_and_output(X_batch, T_batch)
-        y_cpu = cuda.to_cpu(y.data)
-        print T[indexes]
-        plt.matshow(y_cpu.reshape(28, 28), cmap=plt.cm.gray)
-        plt.show()
+    y_cpu = cuda.to_cpu(y.data)
+    print T[indexes]
+    plt.matshow(y_cpu.reshape(28, 28), cmap=plt.cm.gray)
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -61,6 +62,14 @@ if __name__ == '__main__':
                                                           random_state=10)
     X_train = X_train[0:1000]
     T_train = T_train[0:1000]
+    X_valid = X_valid[0:100]
+    T_valid = T_valid[0:100]
+    X_train_gpu = cuda.to_gpu(X_train)
+    T_train_gpu = cuda.to_gpu(T_train)
+    X_valid_gpu = cuda.to_gpu(X_valid)
+    T_valid_gpu = cuda.to_gpu(T_valid)
+    X_test_gpu = cuda.to_gpu(X_test)
+    T_test_gpu = cuda.to_gpu(T_test)
     num_train = len(X_train)
     num_features = X_train.shape[1]
 
@@ -82,9 +91,13 @@ if __name__ == '__main__':
     optimizer.setup(model)
 
     num_batches = num_train / batch_size
+    loss_trains_history = []  # グラフ描画用の配列
+    loss_valids_history = []  # グラフ描画用の配列
 
+    time_origin = time.time()
     try:
         for epoch in range(max_iteration):
+            time_begin = time.time()
             # 入力データXと正解ラベルを取り出す
             permu = np.random.permutation(num_train)
             for indexes in np.array_split(permu, num_batches):
@@ -99,13 +112,41 @@ if __name__ == '__main__':
                 loss.backward()
                 optimizer.update()
 
-        # 訓練データでの結果を表示
-        plot_data(model, X_train, T_train, num_batches)
+            time_end = time.time()
+            epoch_time = time_end - time_begin
+            total_time = time_end - time_origin
+
+            # 訓練データでの結果を表示
+            print "epoch:", epoch
+            print "time:", epoch_time, "(", total_time, ")"
+
+            loss_train, y = model.loss_and_output(X_train_gpu, T_train_gpu)
+            loss_valid, y = model.loss_and_output(X_valid_gpu, T_valid_gpu)
+            loss_train = cuda.to_cpu(loss_train.data)
+            loss_valid = cuda.to_cpu(loss_valid.data)
+            loss_trains_history.append(loss_train)
+            loss_valids_history.append(loss_valid)
+            print "[train] loss:", loss_trains_history[epoch]
+            print "[valid] loss:", loss_valids_history[epoch]
+            plt.plot(loss_trains_history)
+            plt.plot(loss_valids_history)
+            plt.title("loss")
+            plt.legend(["train", "valid"], loc="upper right")
+            plt.grid()
+            plt.show()
+
+            plot_data(model, X_train, T_train, num_batches)
 
     except KeyboardInterrupt:
         print "割り込み停止が実行されました"
 
     # テストデータでの結果を表示
+    X_train = X_train[0:10]
+    T_train = T_train[0:10]
     num_batches = len(X_test) / batch_size
-    permu = np.random.permutation(len(X_test))
     plot_data(model, X_test, T_test, num_batches)
+    loss_test, y = model.loss_and_output(X_test_gpu, T_test_gpu)
+    print "[test] loss:", loss_test.data
+    print "max_iteration:", max_iteration
+    print "batch_size:", batch_size
+    print "learning_rate", learning_rate
