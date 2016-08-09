@@ -33,18 +33,6 @@ class Autoencoder(Chain):
         return F.mean_squared_error(y, t), y
 
 
-def plot_data(model, X, T, num_batches):
-    total_data = np.random.permutation(len(X))
-    for indexes in np.array_split(total_data, num_batches):
-        X_batch = cuda.to_gpu(X[indexes])
-        T_batch = cuda.to_gpu(T[indexes])
-        loss, y = model.loss_and_output(X_batch, T_batch)
-    y_cpu = cuda.to_cpu(y.data)
-    print T[indexes]
-    plt.matshow(y_cpu.reshape(28, 28), cmap=plt.cm.gray)
-    plt.show()
-
-
 if __name__ == '__main__':
     X_train, T_train, X_test, T_test = load_mnist.load_mnist()
     # データを0~1に変換
@@ -64,6 +52,8 @@ if __name__ == '__main__':
     T_train = T_train[0:1000]
     X_valid = X_valid[0:100]
     T_valid = T_valid[0:100]
+    X_test = X_test[0:100]
+    T_test = T_test[0:100]
     X_train_gpu = cuda.to_gpu(X_train)
     T_train_gpu = cuda.to_gpu(T_train)
     X_valid_gpu = cuda.to_gpu(X_valid)
@@ -120,10 +110,14 @@ if __name__ == '__main__':
             print "epoch:", epoch
             print "time:", epoch_time, "(", total_time, ")"
 
-            loss_train, y = model.loss_and_output(X_train_gpu, T_train_gpu)
-            loss_valid, y = model.loss_and_output(X_valid_gpu, T_valid_gpu)
+            loss_train, y_train = model.loss_and_output(X_train_gpu,
+                                                        T_train_gpu)
+            loss_valid, y_valid = model.loss_and_output(X_valid_gpu,
+                                                        T_valid_gpu)
             loss_train = cuda.to_cpu(loss_train.data)
             loss_valid = cuda.to_cpu(loss_valid.data)
+            y_train = cuda.to_cpu(y_train.data)
+            y_valid = cuda.to_cpu(y_valid.data)
             loss_trains_history.append(loss_train)
             loss_valids_history.append(loss_valid)
             print "[train] loss:", loss_trains_history[epoch]
@@ -134,19 +128,22 @@ if __name__ == '__main__':
             plt.legend(["train", "valid"], loc="upper right")
             plt.grid()
             plt.show()
-
-            plot_data(model, X_train, T_train, num_batches)
+            i = np.random.choice(len(X_train_gpu))
+            print "画像の数字:", "[", T_train[i], "]"
+            plt.matshow(y_train[i].reshape(28, 28), cmap=plt.cm.gray)
+            plt.show()
 
     except KeyboardInterrupt:
         print "割り込み停止が実行されました"
 
     # テストデータでの結果を表示
-    X_train = X_train[0:10]
-    T_train = T_train[0:10]
-    num_batches = len(X_test) / batch_size
-    plot_data(model, X_test, T_test, num_batches)
-    loss_test, y = model.loss_and_output(X_test_gpu, T_test_gpu)
+    loss_test, y_test = model.loss_and_output(X_test_gpu, T_test_gpu)
+    y_test = cuda.to_cpu(y_test.data)
+    i = np.random.choice(len(X_test_gpu))
     print "[test] loss:", loss_test.data
     print "max_iteration:", max_iteration
     print "batch_size:", batch_size
     print "learning_rate", learning_rate
+    print "画像の数字:", "[", T_test[i], "]"
+    plt.matshow(y_test[i].reshape(28, 28), cmap=plt.cm.gray)
+    plt.show()
