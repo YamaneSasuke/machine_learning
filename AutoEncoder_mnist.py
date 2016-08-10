@@ -30,7 +30,7 @@ class Autoencoder(Chain):
         h = self.encode(x)
         h = F.relu(h)
         h = self.decode(h)
-        y = F.relu(h)
+        y = F.sigmoid(h)
         return F.mean_squared_error(y, t), y
 
 
@@ -84,8 +84,8 @@ if __name__ == '__main__':
                                                           T_train,
                                                           test_size=0.1,
                                                           random_state=10)
-    X_test = np.random.permutation(X_test)
-    T_test = np.random.permutation(T_test)
+#    X_test = np.random.permutation(X_test)
+#    T_test = np.random.permutation(T_test)
     X_train = X_train[0:1000]
     T_train = T_train[0:1000]
     X_valid = X_valid[0:100]
@@ -103,9 +103,9 @@ if __name__ == '__main__':
 
     # 超パラメータ
     max_iteration = 100  # 繰り返し回数
-    batch_size = 1  # ミニバッチサイズ
-    learning_rate = 0.00005  # 学習率
-    dim_hidden = 400  # 隠れ層の次元数
+    batch_size = 100  # ミニバッチサイズ
+    learning_rate = 0.001  # 学習率
+    dim_hidden = 500  # 隠れ層の次元数
 
     model = Autoencoder(num_features, dim_hidden).to_gpu()
 
@@ -162,6 +162,8 @@ if __name__ == '__main__':
             plt.show()
             i = np.random.choice(len(X_train_gpu))
             print "画像の数字:", "[", T_train[i], "]"
+            plt.matshow(X_train[i].reshape(28, 28), cmap=plt.cm.gray)
+            plt.show()
             plt.matshow(y_train[i].reshape(28, 28), cmap=plt.cm.gray)
             plt.show()
 
@@ -170,10 +172,10 @@ if __name__ == '__main__':
 
     # テストデータでの結果を表示
     loss_test, y_test = model.loss_and_output(X_test_gpu, T_test_gpu)
-    y_test = cuda.to_cpu(y_test.data)
-    i = np.random.choice(len(X_test_gpu))
+    y_test_cpu = cuda.to_cpu(y_test.data)
+#    i = np.random.choice(len(X_test_gpu))
     print "[test] loss:", loss_test.data
     print "max_iteration:", max_iteration
     print "batch_size:", batch_size
     print "learning_rate", learning_rate
-    draw_filters(y_test, 10)
+    draw_filters(y_test_cpu, 10)
