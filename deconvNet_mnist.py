@@ -16,24 +16,45 @@ import matplotlib.pyplot as plt
 import time
 
 
-# ニューラルネットワークの定義
+# ネットワークの定義
 class ConvnetDeconvnet(Chain):
     def __init__(self):
         super(ConvnetDeconvnet, self).__init__(
-            conv1=L.Convolution2D(1, 100, 3, pad=1),
-            deconv1=L.Deconvolution2D(100, 1, 3, pad=1)
+            conv1=L.Convolution2D(1, 20, 3, pad=1),
+            conv2=L.Convolution2D(20, 50, 3, pad=1),
+            deconv1=L.Deconvolution2D(50, 20, 3, pad=1),
+            deconv2=L.Deconvolution2D(20, 1, 3, pad=1)
         )
 
-    def loss_and_output(self, X, T):
+    def forward(self, X):
         x = Variable(X.reshape(-1, 1, 28, 28))
-        t = Variable(X.reshape(-1, 1, 28, 28))
         h = self.conv1(x)
         h = F.relu(h)
         h = F.max_pooling_2d(h, 2)
-        h = F.unpooling_2d(h, 2, outsize=(28, 28))
+        h = self.conv2(h)
+        h = F.relu(h)
+        h = F.max_pooling_2d(h, 2)
+        h = F.unpooling_2d(h, 2, outsize=(14, 14))
         h = self.deconv1(h)
+        h = F.relu(h)
+        h = F.unpooling_2d(h, 2, outsize=(28, 28))
+        h = self.deconv2(h)
         y = F.sigmoid(h)
-        return F.mean_squared_error(y, t), y
+        return y
+
+    def lossfun(self, X, T):
+        t = Variable(T.reshape(-1, 1, 28, 28))
+        y = self.forward(X)
+        loss = F.mean_squared_error(y, t)
+        return loss
+
+    def loss_and_output(self, X, T):
+        y = cuda.to_cpu(self.forward(X).data)
+        loss = cuda.to_cpu(self.lossfun(X, T).data)
+        return loss, y
+
+    def predict(self, X):
+        return cuda.to_cpu(self.forward(X).data)
 
 
 def draw_filters(W, cols=20, fig_size=(10, 10), filter_shape=(28, 28),
@@ -86,8 +107,8 @@ if __name__ == '__main__':
                                                           T_train,
                                                           test_size=0.1,
                                                           random_state=10)
-#    X_test = np.random.permutation(X_test)
-#    T_test = np.random.permutation(T_test)
+    X_test = np.random.permutation(X_test)
+    T_test = np.random.permutation(T_test)
     X_train = X_train[0:1000]
     T_train = T_train[0:1000]
     X_valid = X_valid[0:100]
@@ -95,11 +116,11 @@ if __name__ == '__main__':
     X_test = X_test[0:100]
     T_test = T_test[0:100]
     X_train_gpu = cuda.to_gpu(X_train)
-    T_train_gpu = cuda.to_gpu(T_train)
+    T_train_gpu = X_train_gpu
     X_valid_gpu = cuda.to_gpu(X_valid)
-    T_valid_gpu = cuda.to_gpu(T_valid)
+    T_valid_gpu = X_valid_gpu
     X_test_gpu = cuda.to_gpu(X_test)
-    T_test_gpu = cuda.to_gpu(T_test)
+    T_test_gpu = X_test_gpu
 
     num_features = X_train.shape[1]
 
@@ -127,12 +148,12 @@ if __name__ == '__main__':
             permu = np.random.permutation(len(X_train))
             for indexes in np.array_split(permu, num_batches):
                 x_batch = cuda.to_gpu(X_train[indexes])
-                t_batch = cuda.to_gpu(T_train[indexes])
+                t_batch = x_batch
                 this_batch_size = len(indexes)
                 # 勾配を初期化
                 optimizer.zero_grads()
                 # 順伝播を計算し、誤差と精度を取得
-                loss, y = model.loss_and_output(x_batch, t_batch)
+                loss = model.lossfun(x_batch, t_batch)
                 # 逆伝搬を計算
                 loss.backward()
                 optimizer.update()
@@ -145,10 +166,6 @@ if __name__ == '__main__':
                                                         T_train_gpu)
             loss_valid, y_valid = model.loss_and_output(X_valid_gpu,
                                                         T_valid_gpu)
-            loss_train = cuda.to_cpu(loss_train.data)
-            loss_valid = cuda.to_cpu(loss_valid.data)
-            y_train = cuda.to_cpu(y_train.data)
-            y_valid = cuda.to_cpu(y_valid.data)
             loss_trains_history.append(loss_train)
             loss_valids_history.append(loss_valid)
             # 訓練データでの結果を表示
@@ -173,11 +190,11 @@ if __name__ == '__main__':
         print "割り込み停止が実行されました"
 
     # テストデータでの結果を表示
-    loss_test, y_test = model.loss_and_output(X_test_gpu, T_test_gpu)
-    y_test_cpu = cuda.to_cpu(y_test.data)
+    y_test = model.predict(X_test_gpu)
+    loss_test = model.lossfun(X_test_gpu, T_test_gpu)
 #    i = np.random.choice(len(X_test_gpu))
-    print "[test] loss:", loss_test.data
+    print "[test] loss:", loss_test
     print "max_iteration:", max_iteration
     print "batch_size:", batch_size
     print "learning_rate", learning_rate
-    draw_filters(y_test_cpu, 10)
+    draw_filters(y_test, 10)
