@@ -17,9 +17,9 @@ import time
 
 
 # ニューラルネットワークの定義
-class Convnet_Deconvnet(Chain):
+class ConvnetDeconvnet(Chain):
     def __init__(self):
-        super(Convnet_Deconvnet, self).__init__(
+        super(ConvnetDeconvnet, self).__init__(
             conv1=L.Convolution2D(1, 100, 3, pad=1),
             deconv1=L.Deconvolution2D(100, 1, 3, pad=1)
         )
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     learning_rate = 0.001  # 学習率
     dim_hidden = 500  # 隠れ層の次元数
 
-    model = Convnet_Deconvnet().to_gpu()
+    model = ConvnetDeconvnet().to_gpu()
 
     # Optimizerの設定
     optimizer = optimizers.Adam(learning_rate)
