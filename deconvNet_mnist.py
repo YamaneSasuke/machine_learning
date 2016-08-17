@@ -20,24 +20,24 @@ import time
 class ConvnetDeconvnet(Chain):
     def __init__(self):
         super(ConvnetDeconvnet, self).__init__(
-            conv1=L.Convolution2D(1, 20, 3, pad=1),
-            conv2=L.Convolution2D(20, 50, 3, pad=1),
-            deconv1=L.Deconvolution2D(50, 20, 3, pad=1),
-            deconv2=L.Deconvolution2D(20, 1, 3, pad=1)
+            conv1=L.Convolution2D(1, 15, 3, pad=1),
+            conv2=L.Convolution2D(15, 30, 3, pad=1),
+            deconv1=L.Deconvolution2D(30, 15, 3, pad=1),
+            deconv2=L.Deconvolution2D(15, 1, 3, pad=1)
         )
 
     def forward(self, X):
         x = Variable(X.reshape(-1, 1, 28, 28))
         h = self.conv1(x)
-        h = F.relu(h)
-        h = F.max_pooling_2d(h, 2)
+        h1 = F.tanh(h)
+        h = F.max_pooling_2d(h1, 2,)
         h = self.conv2(h)
-        h = F.relu(h)
-        h = F.max_pooling_2d(h, 2)
-        h = F.unpooling_2d(h, 2, outsize=(14, 14))
+        h2 = F.tanh(h)
+        h = F.max_pooling_2d(h2, 2,)
+        h = F.unpooling_2d(h, 2, outsize=h2.data.shape[2:])
         h = self.deconv1(h)
-        h = F.relu(h)
-        h = F.unpooling_2d(h, 2, outsize=(28, 28))
+        h = F.tanh(h)
+        h = F.unpooling_2d(h, 2, outsize=h1.data.shape[2:])
         h = self.deconv2(h)
         y = F.sigmoid(h)
         return y
