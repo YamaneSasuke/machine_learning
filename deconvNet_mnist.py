@@ -26,35 +26,38 @@ class ConvnetDeconvnet(Chain):
             deconv2=L.Deconvolution2D(15, 1, 3, pad=1)
         )
 
-    def forward(self, X):
+    def forward(self, X, train):
         x = Variable(X.reshape(-1, 1, 28, 28))
         h = self.conv1(x)
-        h1 = F.tanh(h)
+        h1 = F.relu(h)
         h = F.max_pooling_2d(h1, 2,)
         h = self.conv2(h)
-        h2 = F.tanh(h)
+        h2 = F.relu(h)
+        h = F.dropout(h, train=train)
         h = F.max_pooling_2d(h2, 2,)
         h = F.unpooling_2d(h, 2, outsize=h2.data.shape[2:])
         h = self.deconv1(h)
-        h = F.tanh(h)
+        h = F.relu(h)
         h = F.unpooling_2d(h, 2, outsize=h1.data.shape[2:])
         h = self.deconv2(h)
+#        y = F.sigmoid(h)
+#        h = F.dropout(h, train=train)
         y = F.sigmoid(h)
         return y
 
-    def lossfun(self, X, T):
+    def lossfun(self, X, T, train):
         t = Variable(T.reshape(-1, 1, 28, 28))
-        y = self.forward(X)
+        y = self.forward(X, train)
         loss = F.mean_squared_error(y, t)
         return loss
 
-    def loss_and_output(self, X, T):
-        y = cuda.to_cpu(self.forward(X).data)
-        loss = cuda.to_cpu(self.lossfun(X, T).data)
+    def loss_and_output(self, X, T, train):
+        y = cuda.to_cpu(self.forward(X, train).data)
+        loss = cuda.to_cpu(self.lossfun(X, T, train).data)
         return loss, y
 
-    def predict(self, X):
-        return cuda.to_cpu(self.forward(X).data)
+    def predict(self, X, train):
+        return cuda.to_cpu(self.forward(X, train).data)
 
 
 def draw_filters(W, cols=20, fig_size=(10, 10), filter_shape=(28, 28),
@@ -125,10 +128,10 @@ if __name__ == '__main__':
     num_features = X_train.shape[1]
 
     # 超パラメータ
-    max_iteration = 100  # 繰り返し回数
+    max_iteration = 200  # 繰り返し回数
     batch_size = 100  # ミニバッチサイズ
     learning_rate = 0.001  # 学習率
-    dim_hidden = 500  # 隠れ層の次元数
+#    decay_rate = 0.001
 
     model = ConvnetDeconvnet().to_gpu()
 
@@ -153,9 +156,10 @@ if __name__ == '__main__':
                 # 勾配を初期化
                 optimizer.zero_grads()
                 # 順伝播を計算し、誤差と精度を取得
-                loss = model.lossfun(x_batch, t_batch)
+                loss = model.lossfun(x_batch, t_batch, True)
                 # 逆伝搬を計算
                 loss.backward()
+#                optimizer.weight_decay(decay_rate)  # L2正則化を実行
                 optimizer.update()
 
             time_end = time.time()
@@ -163,9 +167,11 @@ if __name__ == '__main__':
             total_time = time_end - time_origin
 
             loss_train, y_train = model.loss_and_output(X_train_gpu,
-                                                        T_train_gpu)
+                                                        T_train_gpu,
+                                                        False)
             loss_valid, y_valid = model.loss_and_output(X_valid_gpu,
-                                                        T_valid_gpu)
+                                                        T_valid_gpu,
+                                                        False)
             loss_trains_history.append(loss_train)
             loss_valids_history.append(loss_valid)
             # 訓練データでの結果を表示
@@ -190,11 +196,13 @@ if __name__ == '__main__':
         print "割り込み停止が実行されました"
 
     # テストデータでの結果を表示
-    y_test = model.predict(X_test_gpu)
-    loss_test = model.lossfun(X_test_gpu, T_test_gpu)
-#    i = np.random.choice(len(X_test_gpu))
+    y_test = model.predict(X_test_gpu, False)
+    loss_test = model.lossfun(X_test_gpu, T_test_gpu, False)
     print "[test] loss:", loss_test
     print "max_iteration:", max_iteration
     print "batch_size:", batch_size
     print "learning_rate", learning_rate
+    print "X_test"
+    draw_filters(X_test, 10)
+    print "predict_test"
     draw_filters(y_test, 10)
