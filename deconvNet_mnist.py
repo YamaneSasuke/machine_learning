@@ -33,22 +33,21 @@ class ConvnetDeconvnet(Chain):
     def forward(self, X, test):
         x = Variable(X.reshape(-1, 1, 28, 28))
         h = self.conv1(x)
-#        h = self.norm1(h, test=test)
+        h = self.norm1(h, test=test)
         h = F.relu(h)
-        h1_size = h.data.shape[2:0]
+        h1_size = h.data.shape[2:]
         h = F.max_pooling_2d(h, 2)
         h = self.conv2(h)
-#        h = self.norm2(h, test=test)
-        h = F.relu(h)
-        h2_size = h.data.shape[2:0]
-        h = F.max_pooling_2d(h, 2)
-        h = F.unpooling_2d(h, 2, outsize=h2_size)
+        h = self.norm2(h, test=test)
+        h2 = F.relu(h)
+        h = F.max_pooling_2d(h2, 2)
+        h = F.unpooling_2d(h, 2, outsize=h2.data.shape[2:])
         h = self.deconv1(h)
-#        h = self.norm3(h, test=test)
+        h = self.norm3(h, test=test)
         h = F.relu(h)
         h = F.unpooling_2d(h, 2, outsize=h1_size)
         h = self.deconv2(h)
-#        h = self.norm4(h, test=test)
+        h = self.norm4(h, test=test)
         y = F.sigmoid(h)
         return y
 
@@ -63,8 +62,40 @@ class ConvnetDeconvnet(Chain):
         loss = cuda.to_cpu(self.lossfun(X, T, test).data)
         return loss, y
 
-    def predict(self, X, test):
-        return cuda.to_cpu(self.forward(X, test).data)
+    def predict(self, X, num_batches, test):
+        ys = []
+        total_data = np.arange(len(X))
+        for indexes in np.array_split(total_data, num_batches):
+            X_batch = cuda.to_gpu(X[indexes])
+            y = cuda.to_cpu(model.forward(X_batch, test).data)
+            ys.append(y)
+        return ys
+#        return cuda.to_cpu(self.forward(X, test).data)
+
+    def loss_ave_and_output_sum(self, X, T, num_batches, test):
+        losses = []
+        ys = []
+        total_data = np.arange(len(X))
+        for indexes in np.array_split(total_data, num_batches):
+            X_batch = cuda.to_gpu(X[indexes])
+            T_batch = cuda.to_gpu(T[indexes])
+            y = cuda.to_cpu(self.forward(X_batch, test).data)
+            loss = cuda.to_cpu(self.lossfun(X_batch, T_batch, test).data)
+            losses.append(loss)
+#            ys.append(y)
+        return np.mean(losses), y
+
+    def lossfun_ave(self, X, T, num_batches, test):
+        losses = []
+        total_data = np.arange(len(X))
+        for indexes in np.array_split(total_data, num_batches):
+            X_batch = cuda.to_gpu(X[indexes])
+            T_batch = cuda.to_gpu(T[indexes])
+            T_batch = Variable(T_batch.reshape(-1, 1, 28, 28))
+            y = self.forward(X_batch, test)
+            loss = F.mean_squared_error(y, T_batch)
+            losses.append(loss)
+        return np.mean(losses)
 
 
 def draw_filters(W, cols=20, fig_size=(10, 10), filter_shape=(28, 28),
@@ -119,18 +150,21 @@ if __name__ == '__main__':
                                                           random_state=10)
     X_test = np.random.permutation(X_test)
     T_test = np.random.permutation(T_test)
-    X_train = X_train[0:1000]
-    T_train = T_train[0:1000]
-    X_valid = X_valid[0:100]
-    T_valid = T_valid[0:100]
-    X_test = X_test[0:100]
-    T_test = T_test[0:100]
-    X_train_gpu = cuda.to_gpu(X_train)
-    T_train_gpu = X_train_gpu
-    X_valid_gpu = cuda.to_gpu(X_valid)
-    T_valid_gpu = X_valid_gpu
-    X_test_gpu = cuda.to_gpu(X_test)
-    T_test_gpu = X_test_gpu
+#    X_train = X_train[0:1000]
+#    T_train = T_train[0:1000]
+#    X_valid = X_valid[0:100]
+#    T_valid = T_valid[0:100]
+#    X_test = X_test[0:100]
+#    T_test = T_test[0:100]
+#    X_train_gpu = cuda.to_gpu(X_train)
+#    T_train_gpu = X_train_gpu
+#    X_valid_gpu = cuda.to_gpu(X_valid)
+#    T_valid_gpu = X_valid_gpu
+#    X_test_gpu = cuda.to_gpu(X_test)
+#    T_test_gpu = X_test_gpu
+    T_train = X_train
+    T_valid = X_valid
+    T_test = X_test
 
     num_features = X_train.shape[1]
 
@@ -173,12 +207,20 @@ if __name__ == '__main__':
             epoch_time = time_end - time_begin
             total_time = time_end - time_origin
 
-            loss_train, y_train = model.loss_and_output(X_train_gpu,
-                                                        T_train_gpu,
-                                                        False)
-            loss_valid, y_valid = model.loss_and_output(X_valid_gpu,
-                                                        T_valid_gpu,
-                                                        False)
+#            loss_train, y_train = model.loss_and_output(X_train_gpu,
+#                                                        T_train_gpu,
+#                                                        False)
+#            loss_valid, y_valid = model.loss_and_output(X_valid_gpu,
+#                                                        T_valid_gpu,
+#                                                        False)
+            loss_train, y_train = model.loss_ave_and_output_sum(X_train,
+                                                                T_train,
+                                                                num_batches,
+                                                                False)
+            loss_valid, y_valid = model.loss_ave_and_output_sum(X_valid,
+                                                                T_valid,
+                                                                num_batches,
+                                                                False)
             loss_trains_history.append(loss_train)
             loss_valids_history.append(loss_valid)
             # 訓練データでの結果を表示
@@ -192,8 +234,8 @@ if __name__ == '__main__':
             plt.legend(["train", "valid"], loc="upper right")
             plt.grid()
             plt.show()
-            i = np.random.choice(len(X_train_gpu))
-            print "画像の数字:", "[", T_train[i], "]"
+            i = np.random.choice(batch_size)
+#            print "画像の数字:", "[", T_train[i], "]"
             plt.matshow(X_train[i].reshape(28, 28), cmap=plt.cm.gray)
             plt.show()
             plt.matshow(y_train[i].reshape(28, 28), cmap=plt.cm.gray)
@@ -203,9 +245,9 @@ if __name__ == '__main__':
         print "割り込み停止が実行されました"
 
     # テストデータでの結果を表示
-    y_test = model.predict(X_test_gpu, True)
-    loss_test = model.lossfun(X_test_gpu, T_test_gpu, True)
-    print "[test] loss:", loss_test.data
+    y_test = model.predict(X_test, num_batches, True)
+#    loss_test = model.lossfun_ave(X_test, T_test, num_batches, True)
+#    print "[test] loss:", loss_test.data
     print "max_iteration:", max_iteration
     print "batch_size:", batch_size
     print "learning_rate", learning_rate
